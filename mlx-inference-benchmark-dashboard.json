@@ -1,0 +1,829 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "Metrics source",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    }
+  ],
+  "id": null,
+  "uid": "mlx-benchmark-m4",
+  "title": "MLX Inference | Benchmark Relationships",
+  "description": "Benchmark snapshots (not live inference rates). Compare measured prefill, decode, memory, and sample age across prompt lengths on Mac Mini M4.",
+  "tags": [
+    "mlx",
+    "llm",
+    "benchmark",
+    "apple-m4"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "15s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "model",
+        "label": "Model",
+        "type": "query",
+        "datasource": "${DS_PROMETHEUS}",
+        "query": {
+          "query": "label_values(mlx_generation_tokens_per_second{job=\"mlx-mac-mini\"}, model)",
+          "refId": "var-model"
+        },
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "generation_tokens",
+        "label": "Output tokens",
+        "type": "query",
+        "datasource": "${DS_PROMETHEUS}",
+        "query": {
+          "query": "label_values(mlx_generation_tokens_per_second{job=\"mlx-mac-mini\"}, generation_tokens)",
+          "refId": "var-output"
+        },
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "How to read this dashboard",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Benchmark measurements, not live inference utilization.** Single-request series represent the latest completed test per (model, input, output). Concurrency panels represent the latest completed non-streaming test per (model, concurrency). Lines between tests show retained values, not live activity. **TTFT is estimated in single-request tests and not measured in concurrency tests.** Historical trials remain in `benchmark_results.jsonl` and `concurrency_results.jsonl` on the Mac."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Exporter reachability",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"mlx-mac-mini\"}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Last benchmark age",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max(mlx_benchmark_last_run_timestamp_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"})",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "orange",
+                "value": 3600
+              },
+              {
+                "color": "red",
+                "value": 86400
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Best measured decode",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(mlx_generation_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"})",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: tok/s",
+          "decimals": 2
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Maximum measured peak memory",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(mlx_peak_memory_gb{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"})",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: GB",
+          "decimals": 3
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "Prefill throughput by context length",
+      "description": "Each bar is a measured prompt tokens/sec value for a benchmark configuration.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_prefill_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output — {{model}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: tok/s",
+          "decimals": 2,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "Decode throughput by context length",
+      "description": "Look for decreasing token generation speed as prompt length grows.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_generation_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output — {{model}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: tok/s",
+          "decimals": 2,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "bargauge",
+      "title": "Peak MLX memory by context length",
+      "description": "This is measured MLX peak allocation, not total macOS memory or a pure KV-cache measurement.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_peak_memory_gb{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output — {{model}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: GB",
+          "decimals": 3,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "bargauge",
+      "title": "Prefill / decode speed ratio",
+      "description": "Derived relationship: prefill tok/s divided by decode tok/s, matched by model and benchmark configuration.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_prefill_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"} / on (job,instance,model,prompt_tokens,generation_tokens) mlx_generation_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output — {{model}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: ×",
+          "decimals": 2,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Prefill throughput — measurement snapshots",
+      "description": "Flat lines between benchmarks indicate unchanged recorded results, not continuous inference.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_prefill_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: tok/s",
+          "min": 0
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Decode throughput — measurement snapshots",
+      "description": "Measured latest values, sampled periodically; no benchmark is performed by Prometheus.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 25,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_generation_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: tok/s",
+          "min": 0
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "Prefill duration by context",
+      "description": "Estimated from prompt tokens / prompt throughput. Not directly timed as a separate phase.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_prefill_duration_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "bargauge",
+      "title": "Decode duration by context",
+      "description": "Estimated from generated tokens / decode throughput.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 34,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_decode_duration_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "bargauge",
+      "title": "Measured total benchmark latency",
+      "description": "Mean total_time from the actual benchmark trials, including overhead.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_total_latency_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "bargauge",
+      "title": "Estimated TTFT — not measured",
+      "description": "Approximation: prefill duration + one average decode token. Real TTFT needs streamed first-token timing.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 43,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_estimated_ttft_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "min": 0
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "bargauge",
+      "title": "Prefill share of measured total time",
+      "description": "Calculated prefill seconds divided by measured total latency. An approximation, not a separately instrumented phase timer.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * mlx_prefill_duration_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"} / on (job,instance,model,prompt_tokens,generation_tokens) mlx_total_latency_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "bargauge",
+      "title": "Decode share of measured total time",
+      "description": "Calculated decode seconds divided by measured total latency. Shares may not sum to exactly 100% because of runtime overhead and independent averages.",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 52,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * mlx_decode_duration_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"} / on (job,instance,model,prompt_tokens,generation_tokens) mlx_total_latency_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "legendFormat": "{{prompt_tokens}} input / {{generation_tokens}} output",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Latest benchmark values by configuration",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 60,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mlx_prefill_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "mlx_generation_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "mlx_peak_memory_gb{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "expr": "mlx_total_latency_seconds{job=\"mlx-mac-mini\",model=~\"$model\",generation_tokens=~\"$generation_tokens\"}",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "prompt_tokens",
+            "mode": "outer"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {"id":19,"type":"bargauge","title":"Concurrency — aggregate output throughput","description":"Completed non-streaming load test; more concurrency can increase total throughput while worsening latency.","datasource":"${DS_PROMETHEUS}","gridPos":{"x":0,"y":69,"w":12,"h":9},"targets":[{"refId":"A","expr":"mlx_concurrency_output_tokens_per_second{job=\"mlx-mac-mini\",model=~\"$model\"}","legendFormat":"{{concurrency}} concurrent","instant":true}],"fieldConfig":{"defaults":{"unit":"suffix: tok/s","decimals":2,"min":0}},"options":{"orientation":"horizontal","displayMode":"gradient","reduceOptions":{"calcs":["lastNotNull"],"values":true}}},
+    {"id":20,"type":"bargauge","title":"Concurrency — completed requests/sec","datasource":"${DS_PROMETHEUS}","gridPos":{"x":12,"y":69,"w":12,"h":9},"targets":[{"refId":"A","expr":"mlx_concurrency_requests_per_second{job=\"mlx-mac-mini\",model=~\"$model\"}","legendFormat":"{{concurrency}} concurrent","instant":true}],"fieldConfig":{"defaults":{"unit":"reqps","decimals":2,"min":0}},"options":{"orientation":"horizontal","displayMode":"gradient","reduceOptions":{"calcs":["lastNotNull"],"values":true}}},
+    {"id":21,"type":"bargauge","title":"Concurrency — P50 latency","description":"End-to-end latency; NOT TTFT.","datasource":"${DS_PROMETHEUS}","gridPos":{"x":0,"y":78,"w":12,"h":9},"targets":[{"refId":"A","expr":"mlx_concurrency_p50_latency_seconds{job=\"mlx-mac-mini\",model=~\"$model\"}","legendFormat":"{{concurrency}} concurrent","instant":true}],"fieldConfig":{"defaults":{"unit":"s","decimals":2,"min":0}},"options":{"orientation":"horizontal","displayMode":"gradient","reduceOptions":{"calcs":["lastNotNull"],"values":true}}},
+    {"id":22,"type":"bargauge","title":"Concurrency — P95 latency","description":"End-to-end latency; 10 requests are insufficient for reliable tail-latency estimates.","datasource":"${DS_PROMETHEUS}","gridPos":{"x":12,"y":78,"w":12,"h":9},"targets":[{"refId":"A","expr":"mlx_concurrency_p95_latency_seconds{job=\"mlx-mac-mini\",model=~\"$model\"}","legendFormat":"{{concurrency}} concurrent","instant":true}],"fieldConfig":{"defaults":{"unit":"s","decimals":2,"min":0}},"options":{"orientation":"horizontal","displayMode":"gradient","reduceOptions":{"calcs":["lastNotNull"],"values":true}}},
+    {"id":23,"type":"bargauge","title":"Concurrency — success rate","datasource":"${DS_PROMETHEUS}","gridPos":{"x":0,"y":87,"w":24,"h":7},"targets":[{"refId":"A","expr":"100 * mlx_concurrency_successes{job=\"mlx-mac-mini\",model=~\"$model\"} / on(job,instance,model,concurrency) mlx_concurrency_requests{job=\"mlx-mac-mini\",model=~\"$model\"}","legendFormat":"{{concurrency}} concurrent","instant":true}],"fieldConfig":{"defaults":{"unit":"percent","decimals":1,"min":0,"max":100}},"options":{"orientation":"horizontal","displayMode":"gradient","reduceOptions":{"calcs":["lastNotNull"],"values":true}}}
+  ]
+}
